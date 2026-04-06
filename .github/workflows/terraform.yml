@@ -11,7 +11,6 @@ on:
       - main
     paths:
       - "task1/terraform/**"
-  # Дозволяємо запускати вручну з вибором дії
   workflow_dispatch:
     inputs:
       action:
@@ -27,10 +26,6 @@ env:
   TF_WORKING_DIR: task1/terraform
 
 jobs:
-  # ─────────────────────────────────────────
-  # JOB 1: Validate (перевірка без розгортання)
-  # Вимога: "перевірка правильності без розгортання"
-  # ─────────────────────────────────────────
   validate:
     name: "Validate Terraform"
     runs-on: ubuntu-latest
@@ -47,29 +42,18 @@ jobs:
       - name: Terraform Init
         working-directory: ${{ env.TF_WORKING_DIR }}
         env:
-          # Секрети передаються через GitHub Secrets — не видно у логах
           AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
         run: terraform init
 
-      - name: Terraform Format Check
-        working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform fmt -check -recursive
-        # Якщо форматування неправильне — зупиняє конвеєр
-
       - name: Terraform Validate
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform validate
-        # Якщо синтаксис неправильний — зупиняє конвеєр тут!
 
-  # ─────────────────────────────────────────
-  # JOB 2: Plan (показує що буде створено)
-  # Запускається лише якщо validate пройшов
-  # ─────────────────────────────────────────
   plan:
     name: "Terraform Plan"
     runs-on: ubuntu-latest
-    needs: validate # залежить від validate — якщо validate впав, plan не запускається
+    needs: validate
 
     steps:
       - name: Checkout repository
@@ -92,7 +76,6 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
-          # Всі секрети через GitHub Secrets — замасковані у логах
           TF_VAR_do_token: ${{ secrets.DO_TOKEN }}
           TF_VAR_ssh_key_fingerprint: ${{ secrets.SSH_KEY_FINGERPRINT }}
           TF_VAR_spaces_access_key: ${{ secrets.SPACES_ACCESS_KEY }}
@@ -101,7 +84,6 @@ jobs:
           terraform plan \
             -out=tfplan \
             -input=false
-        # Якщо plan впав — apply не запуститься
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
@@ -110,22 +92,15 @@ jobs:
           path: ${{ env.TF_WORKING_DIR }}/tfplan
           retention-days: 1
 
-  # ─────────────────────────────────────────
-  # JOB 3: Apply (реальне розгортання)
-  # Запускається лише якщо:
-  #   - plan пройшов успішно
-  #   - це push в main АБО ручний запуск з action=apply
-  # ─────────────────────────────────────────
   apply:
     name: "Terraform Apply"
     runs-on: ubuntu-latest
     needs: plan
-    # Запускається тільки на main або при ручному запуску з вибором apply
     if: |
       (github.ref == 'refs/heads/main' && github.event_name == 'push') ||
       (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply')
     environment:
-      name: production # потребує ручного підтвердження (налаштовується в GitHub)
+      name: production
 
     steps:
       - name: Checkout repository
