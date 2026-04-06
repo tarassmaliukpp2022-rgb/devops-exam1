@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  app-release:
+    image: ghcr.io/${DOCKER_USERNAME}/devops-exam-app:1.0.0
+    container_name: app-release
+    ports:
+      - "8003:8000"
+    restart: always
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1

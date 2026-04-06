@@ -1,0 +1,12 @@
+version: "3.8"
+
+services:
+  app-dev:
+    image: ghcr.io/${DOCKER_USERNAME}/devops-exam-app:develop
+    container_name: app-dev
+    ports:
+      - "8002:8000"
+    restart: always
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONUNBUFFERED=1
