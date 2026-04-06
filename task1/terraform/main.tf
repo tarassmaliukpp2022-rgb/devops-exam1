@@ -1,10 +1,8 @@
 # ─────────────────────────────────────────
-# VPC
+# VPC — імпортуємо існуючий
 # ─────────────────────────────────────────
-resource "digitalocean_vpc" "main" {
-  name     = "${var.surname}-vpc-exam"
-  region   = var.region
-  ip_range = var.vpc_ip_range
+data "digitalocean_vpc" "main" {
+  id = "3b1cd4a0-d7ff-4a70-aef3-d59965a99cc4"
 }
 
 # ─────────────────────────────────────────
@@ -84,7 +82,7 @@ resource "digitalocean_droplet" "main" {
   size   = var.vm_size
   image  = "ubuntu-24-04-x64"
 
-  vpc_uuid = digitalocean_vpc.main.id
+  vpc_uuid = data.digitalocean_vpc.main.id
 
   ssh_keys = [var.ssh_key_fingerprint]
 

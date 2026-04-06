@@ -1,13 +1,11 @@
-# Виводимо корисну інформацію після розгортання
-
 output "vpc_id" {
   description = "VPC ID"
-  value       = digitalocean_vpc.main.id
+  value       = data.digitalocean_vpc.main.id
 }
 
 output "vpc_ip_range" {
   description = "VPC IP range"
-  value       = digitalocean_vpc.main.ip_range
+  value       = data.digitalocean_vpc.main.ip_range
 }
 
 output "firewall_id" {
