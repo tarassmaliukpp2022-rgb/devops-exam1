@@ -1,0 +1,163 @@
+---
+# ─────────────────────────────────────────
+# 1. Системні залежності
+# ─────────────────────────────────────────
+- name: Install system dependencies
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - software-properties-common
+      - conntrack
+      - socat
+      - wget
+    state: present
+
+# ─────────────────────────────────────────
+# 2. Docker (потрібен для Minikube)
+# ─────────────────────────────────────────
+- name: Add Docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Add Docker repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+    state: present
+
+- name: Install Docker
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+    state: present
+    update_cache: true
+
+- name: Start and enable Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+# ─────────────────────────────────────────
+# 3. kubectl
+# ─────────────────────────────────────────
+- name: Add Kubernetes GPG key
+  apt_key:
+    url: https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/Release.key
+    state: present
+
+- name: Add Kubernetes repository
+  apt_repository:
+    repo: "deb https://pkgs.k8s.io/core:/stable:/v{{ k8s_version }}/deb/ /"
+    state: present
+
+- name: Install kubectl
+  apt:
+    name: kubectl
+    state: present
+    update_cache: true
+
+- name: Verify kubectl installation
+  command: kubectl version --client
+  register: kubectl_version
+  changed_when: false
+
+- name: Show kubectl version
+  debug:
+    msg: "{{ kubectl_version.stdout }}"
+
+# ─────────────────────────────────────────
+# 4. Minikube
+# ─────────────────────────────────────────
+- name: Download Minikube
+  get_url:
+    url: "https://storage.googleapis.com/minikube/releases/{{ minikube_version }}/minikube-linux-amd64"
+    dest: /usr/local/bin/minikube
+    mode: "0755"
+
+- name: Verify Minikube installation
+  command: minikube version
+  register: minikube_ver
+  changed_when: false
+
+- name: Show Minikube version
+  debug:
+    msg: "{{ minikube_ver.stdout }}"
+
+# ─────────────────────────────────────────
+# 5. Helm
+# ─────────────────────────────────────────
+- name: Download Helm install script
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get_helm.sh
+    mode: "0755"
+
+- name: Install Helm
+  command: /tmp/get_helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Verify Helm installation
+  command: helm version
+  register: helm_ver
+  changed_when: false
+
+- name: Show Helm version
+  debug:
+    msg: "{{ helm_ver.stdout }}"
+
+# ─────────────────────────────────────────
+# 6. Запуск Minikube
+# ─────────────────────────────────────────
+- name: Start Minikube with docker driver
+  command: minikube start --driver=docker --force
+  args:
+    creates: /root/.minikube/profiles/minikube/config.json
+  environment:
+    HOME: /root
+
+- name: Verify Minikube is running
+  command: minikube status
+  register: minikube_status
+  changed_when: false
+  environment:
+    HOME: /root
+
+- name: Show Minikube status
+  debug:
+    msg: "{{ minikube_status.stdout }}"
+
+# ─────────────────────────────────────────
+# 7. Проксі для доступу до Minikube dashboard
+# Вимога: "прокидання проксі для доступу до Minikube"
+# ─────────────────────────────────────────
+- name: Create kubectl proxy systemd service
+  copy:
+    dest: /etc/systemd/system/kubectl-proxy.service
+    content: |
+      [Unit]
+      Description=Kubectl Proxy for Minikube Dashboard
+      After=network.target
+
+      [Service]
+      ExecStart=/usr/bin/kubectl proxy --port=8001 --address=0.0.0.0 --accept-hosts=.*
+      Restart=always
+      User=root
+      Environment=HOME=/root
+
+      [Install]
+      WantedBy=multi-user.target
+
+- name: Enable and start kubectl proxy
+  systemd:
+    name: kubectl-proxy
+    state: started
+    enabled: true
+    daemon_reload: true

@@ -1,0 +1,22 @@
+---
+- name: Install Kubernetes, Minikube, and Helm
+  hosts: nodes
+  become: true  # виконувати як root
+
+  vars:
+    minikube_version: "v1.32.0"
+    helm_version: "v3.14.0"
+    k8s_version: "1.29"
+
+  pre_tasks:
+    - name: Wait for system to be ready
+      wait_for_connection:
+        timeout: 60
+
+    - name: Update apt cache
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+  roles:
+    - k8s
