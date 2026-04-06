@@ -1,0 +1,14 @@
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+
+# Секрети — ніколи не завантажуємо!
+*.tfvars
+*.env
+.env
+
+# OS
+.DS_Store
