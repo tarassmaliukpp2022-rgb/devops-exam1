@@ -8,23 +8,20 @@ terraform {
     }
   }
 
-  # tfstate зберігається у DigitalOcean Spaces (S3-сумісне сховище)
-  # Це виконує вимогу: "tfstate-файл повинен бути розміщений у хмарі"
   backend "s3" {
-    endpoint = "https://fra1.digitaloceanspaces.com" # регіон Frankfurt
-    region   = "us-east-1" # обов'язкове поле для S3-сумісного backend, але ігнорується DO
+    endpoints = {
+      s3 = "https://fra1.digitaloceanspaces.com"
+    }
 
-    bucket = "terraform-state-smaluk" # назва твого Spaces bucket (створений вручну)
-    key    = "task1/terraform.tfstate" # шлях до файлу всередині bucket
+    region = "us-east-1"
+    bucket = "terraform-state-smaluk"
+    key    = "task1/terraform.tfstate"
 
     skip_credentials_validation = true
     skip_metadata_api_check     = true
     skip_region_validation      = true
+    skip_requesting_account_id  = true
     force_path_style            = true
-
-    # Ключі передаються через змінні середовища:
-    # AWS_ACCESS_KEY_ID     = Spaces Access Key
-    # AWS_SECRET_ACCESS_KEY = Spaces Secret Key
   }
 }
 
